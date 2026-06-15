@@ -310,37 +310,83 @@ def page_achievements():
     from game_logic import get_all_achievements
     unlocked = get_all_achievements()
     
-    cols = st.columns(len(ACHIEVEMENTS))
-    for i, (key, info) in enumerate(ACHIEVEMENTS.items()):
-        with cols[i]:
-            is_unlocked = unlocked.get(key, {}).get('unlocked', 0)
-            
-            # 根据解锁状态设置样式
-            if is_unlocked:
-                card_bg = "linear-gradient(145deg, #FFF9E6 0%, #FFE4B5 100%)"
-                card_border = "2px solid #FFD700"
-                card_shadow = "0 4px 15px rgba(255, 215, 0, 0.3)"
-                icon_style = "font-size: 48px;"
-                name_color = "#DAA520"
-                lock_overlay = ""
-            else:
-                card_bg = "linear-gradient(145deg, #F8F8F8 0%, #E8E8E8 100%)"
-                card_border = "1.5px solid #DDD"
-                card_shadow = "0 2px 8px rgba(0, 0, 0, 0.05)"
-                icon_style = "font-size: 48px; filter: grayscale(100%); opacity: 0.6;"
-                name_color = "#999"
-                lock_overlay = "<div style='position:absolute;top:0;left:0;right:0;bottom:0;background:rgba(255,255,255,0.8);display:flex;align-items:center;justify-content:center;'><span style='font-size:32px;'>🔒</span></div>"
-            
-            # 使用st.write确保HTML正确渲染
-            card_html = f"""
-            <div style='background:{card_bg};border:{card_border};box-shadow:{card_shadow};border-radius:8px;padding:18px;text-align:center;margin:8px;position:relative;overflow:hidden;width:140px;height:140px;display:flex;flex-direction:column;justify-content:center;'>
-                {lock_overlay}
-                <div style='{icon_style}margin-bottom:6px;'>{info['icon']}</div>
-                <div style='font-weight:bold;color:{name_color};font-size:12px;margin-bottom:2px;'>{info['name']}</div>
-                <div style='font-size:10px;color:#888;line-height:1.3;'>{info['desc']}</div>
-            </div>
-            """
-            st.write(card_html, unsafe_allow_html=True)
+    # 将成就分成两排，每排5个
+    achievements_list = list(ACHIEVEMENTS.items())
+    
+    # 第一排
+    cols_row1 = st.columns(5)
+    for i in range(5):
+        with cols_row1[i]:
+            if i < len(achievements_list):
+                key, info = achievements_list[i]
+                is_unlocked = unlocked.get(key, {}).get('unlocked', 0)
+                
+                # 根据解锁状态设置样式
+                if is_unlocked:
+                    card_bg = "linear-gradient(145deg, #FFF9E6 0%, #FFE4B5 100%)"
+                    card_border = "2px solid #FFD700"
+                    card_shadow = "0 4px 15px rgba(255, 215, 0, 0.3)"
+                    icon_style = "font-size: 40px;"
+                    name_color = "#F0E68C"
+                    desc_color = "#F0E68C"
+                    lock_overlay = ""
+                else:
+                    card_bg = "linear-gradient(145deg, #F8F8F8 0%, #E8E8E8 100%)"
+                    card_border = "1.5px solid #DDD"
+                    card_shadow = "0 2px 8px rgba(0, 0, 0, 0.05)"
+                    icon_style = "font-size: 40px; filter: grayscale(100%); opacity: 0.6;"
+                    name_color = "#999"
+                    desc_color = "#999"
+                    lock_overlay = "<div style='position:absolute;top:0;left:0;right:0;bottom:0;background:rgba(255,255,255,0.8);display:flex;align-items:center;justify-content:center;'><span style='font-size:32px;'>🔒</span></div>"
+                
+                # 使用st.write确保HTML正确渲染
+                card_html = f"""
+                <div style='background:{card_bg};border:{card_border};box-shadow:{card_shadow};border-radius:8px;padding:15px;text-align:center;margin:5px;position:relative;overflow:hidden;width:100%;height:140px;display:flex;flex-direction:column;justify-content:center;'>
+                    {lock_overlay}
+                    <div style='{icon_style}margin-bottom:8px;'>{info['icon']}</div>
+                    <div style='font-weight:bold;color:{name_color};font-size:13px;margin-bottom:3px;'>{info['name']}</div>
+                    <div style='font-size:10px;color:{desc_color};line-height:1.3;'>{info['desc']}</div>
+                </div>
+                """
+                st.write(card_html, unsafe_allow_html=True)
+    
+    # 第二排
+    cols_row2 = st.columns(5)
+    for i in range(5):
+        with cols_row2[i]:
+            idx = i + 5
+            if idx < len(achievements_list):
+                key, info = achievements_list[idx]
+                is_unlocked = unlocked.get(key, {}).get('unlocked', 0)
+                
+                # 根据解锁状态设置样式
+                if is_unlocked:
+                    card_bg = "linear-gradient(145deg, #FFF9E6 0%, #FFE4B5 100%)"
+                    card_border = "2px solid #FFD700"
+                    card_shadow = "0 4px 15px rgba(255, 215, 0, 0.3)"
+                    icon_style = "font-size: 40px;"
+                    name_color = "#F0E68C"
+                    desc_color = "#F0E68C"
+                    lock_overlay = ""
+                else:
+                    card_bg = "linear-gradient(145deg, #F8F8F8 0%, #E8E8E8 100%)"
+                    card_border = "1.5px solid #DDD"
+                    card_shadow = "0 2px 8px rgba(0, 0, 0, 0.05)"
+                    icon_style = "font-size: 40px; filter: grayscale(100%); opacity: 0.6;"
+                    name_color = "#999"
+                    desc_color = "#999"
+                    lock_overlay = "<div style='position:absolute;top:0;left:0;right:0;bottom:0;background:rgba(255,255,255,0.8);display:flex;align-items:center;justify-content:center;'><span style='font-size:32px;'>🔒</span></div>"
+                
+                # 使用st.write确保HTML正确渲染
+                card_html = f"""
+                <div style='background:{card_bg};border:{card_border};box-shadow:{card_shadow};border-radius:8px;padding:15px;text-align:center;margin:5px;position:relative;overflow:hidden;width:100%;height:140px;display:flex;flex-direction:column;justify-content:center;'>
+                    {lock_overlay}
+                    <div style='{icon_style}margin-bottom:8px;'>{info['icon']}</div>
+                    <div style='font-weight:bold;color:{name_color};font-size:13px;margin-bottom:3px;'>{info['name']}</div>
+                    <div style='font-size:10px;color:{desc_color};line-height:1.3;'>{info['desc']}</div>
+                </div>
+                """
+                st.write(card_html, unsafe_allow_html=True)
 
 # ========== AI分析页面 ==========
 def page_ai():
