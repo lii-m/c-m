@@ -1,0 +1,8 @@
+.venv
+.env
+*.pyc
+_pycache_/
+&.pyo
+*.pyd
+提示词.txt
+requirements.txt
