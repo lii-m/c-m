@@ -50,10 +50,20 @@ def init_db():
         CREATE TABLE IF NOT EXISTS achievements (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT UNIQUE NOT NULL,
+            description TEXT DEFAULT '',
+            icon TEXT DEFAULT '🏆',
             unlocked INTEGER DEFAULT 0,
             unlocked_at TIMESTAMP
         )
     ''')
+    
+    # 如果存在旧的数据库，添加缺失的列
+    cursor.execute('PRAGMA table_info(achievements)')
+    columns = [col[1] for col in cursor.fetchall()]
+    if 'description' not in columns:
+        cursor.execute('ALTER TABLE achievements ADD COLUMN description TEXT DEFAULT ""')
+    if 'icon' not in columns:
+        cursor.execute('ALTER TABLE achievements ADD COLUMN icon TEXT DEFAULT "🏆"')
     
     # 初始化默认设置
     cursor.execute('''
@@ -68,10 +78,13 @@ def add_expense(date, amount, category, subcategory, emotion, note):
     """添加一条消费记录"""
     conn = get_db_connection()
     cursor = conn.cursor()
+    # 显式传入 created_at 时间戳，避免旧数据库没有默认值的问题
+    from datetime import datetime
+    created_at = datetime.now().isoformat()
     cursor.execute('''
-        INSERT INTO expenses (date, amount, category, subcategory, emotion, note)
-        VALUES (?, ?, ?, ?, ?, ?)
-    ''', (date, amount, category, subcategory, emotion, note))
+        INSERT INTO expenses (date, amount, category, subcategory, emotion, note, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+    ''', (date, amount, category, subcategory, emotion, note, created_at))
     conn.commit()
     conn.close()
 
@@ -210,10 +223,17 @@ def unlock_achievement(name):
     """解锁成就"""
     conn = get_db_connection()
     cursor = conn.cursor()
+    
+    # 从 game_logic 获取成就描述和图标
+    from game_logic import ACHIEVEMENTS
+    achievement_info = ACHIEVEMENTS.get(name, {})
+    description = achievement_info.get('desc', '')
+    icon = achievement_info.get('icon', '🏆')
+    
     cursor.execute('''
-        INSERT OR REPLACE INTO achievements (name, unlocked, unlocked_at)
-        VALUES (?, 1, CURRENT_TIMESTAMP)
-    ''', (name,))
+        INSERT OR REPLACE INTO achievements (name, description, icon, unlocked, unlocked_at)
+        VALUES (?, ?, ?, 1, CURRENT_TIMESTAMP)
+    ''', (name, description, icon))
     conn.commit()
     conn.close()
 

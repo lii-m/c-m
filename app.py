@@ -99,6 +99,76 @@ def render_css():
         color: {theme['primary']};
         font-family: 'Microsoft YaHei', sans-serif;
     }}
+    
+    /* ===== 美化标签页 ===== */
+    .stTabs {{
+        margin-bottom: 1rem;
+    }}
+    
+    .stTabs [role="tablist"] {{
+        gap: 10px;
+        justify-content: center;
+        padding: 10px 0;
+    }}
+    
+    /* 默认状态：杏色渐变 */
+    .stTabs [role="tab"] {{
+        background: linear-gradient(145deg, #FFEFD5 0%, #F5DEB3 100%);
+        border: 1.5px solid #DEB887;
+        border-radius: 12px;
+        padding: 12px 24px;
+        font-size: 18px;
+        font-weight: 600;
+        color: #8B4513;
+        transition: all 0.3s ease;
+        min-width: 120px;
+        text-align: center;
+        box-shadow: 0 2px 8px rgba(210, 180, 140, 0.2);
+    }}
+    
+    .stTabs [role="tab"]:hover {{
+        background: linear-gradient(145deg, #FFF8DC 0%, #FFEFD5 100%);
+        border-color: #D2691E;
+        color: #8B4513;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(210, 105, 30, 0.3);
+    }}
+    
+    .stTabs [role="tab"][aria-selected="true"] {{
+        background: linear-gradient(145deg, #FFE0B2 0%, #FFCC80 100%);
+        border-color: #FF9800;
+        color: #E65100;
+        box-shadow: 0 4px 15px rgba(255, 152, 0, 0.4);
+    }}
+    
+    /* 每个标签页不同的渐变色 */
+    .stTabs [role="tab"]:nth-child(1)[aria-selected="true"] {{
+        background: linear-gradient(145deg, #E3F2FD 0%, #BBDEFB 100%);
+        border-color: #64B5F6;
+        color: #1976D2;
+        box-shadow: 0 4px 15px rgba(100, 181, 246, 0.4);
+    }}
+    
+    .stTabs [role="tab"]:nth-child(2)[aria-selected="true"] {{
+        background: linear-gradient(145deg, #FCE4EC 0%, #F8BBD9 100%);
+        border-color: #F48FB1;
+        color: #C2185B;
+        box-shadow: 0 4px 15px rgba(244, 143, 177, 0.4);
+    }}
+    
+    .stTabs [role="tab"]:nth-child(3)[aria-selected="true"] {{
+        background: linear-gradient(145deg, #E8F5E9 0%, #C8E6C9 100%);
+        border-color: #81C784;
+        color: #2E7D32;
+        box-shadow: 0 4px 15px rgba(129, 199, 132, 0.4);
+    }}
+    
+    .stTabs [role="tab"]:nth-child(4)[aria-selected="true"] {{
+        background: linear-gradient(145deg, #EDE7F6 0%, #D1C4E9 100%);
+        border-color: #BA68C8;
+        color: #6A1B9A;
+        box-shadow: 0 4px 15px rgba(186, 104, 200, 0.4);
+    }}
     </style>
     """
     st.markdown(css, unsafe_allow_html=True)
@@ -306,11 +376,38 @@ def page_achievements():
         st.error("⚠️ 已超预算！要克制一下啦！")
     
     # 成就展示
-    st.markdown("<h3>🏆 成就徽章</h3>", unsafe_allow_html=True)
+    st.markdown("## 成就徽章")
     from game_logic import get_all_achievements
     unlocked = get_all_achievements()
     
-    # 将成就分成两排，每排5个
+    # HTML模板 - 使用更稳定的渲染方式
+    def render_badge(icon, name, desc, colors):
+        bg = colors[0]
+        border = colors[1]
+        
+        html = f"""
+        <div style="background:{bg};border:{border};border-radius:12px;padding:15px;margin:5px;text-align:center;min-height:130px;">
+            <div style="font-size:42px;margin:5px 0;">{icon}</div>
+            <div style="font-weight:bold;font-size:14px;margin:5px 0;">{name}</div>
+            <div style="font-size:11px;color:#666;">{desc}</div>
+        </div>
+        """
+        st.markdown(html, unsafe_allow_html=True)
+    
+    # 成就颜色配置
+    badge_colors = [
+        ("#E8F5E9", "#81C784"),
+        ("#E3F2FD", "#64B5F6"),
+        ("#FFF3E0", "#FFB74D"),
+        ("#FCE4EC", "#F48FB1"),
+        ("#EDE7F6", "#BA68C8"),
+        ("#E0F7FA", "#4DD0E1"),
+        ("#FFF9C4", "#FFD54F"),
+        ("#F3E5F5", "#CE93D8"),
+        ("#EFEBE9", "#A1887F"),
+        ("#ECEFF1", "#90A4AE"),
+    ]
+    
     achievements_list = list(ACHIEVEMENTS.items())
     
     # 第一排
@@ -321,34 +418,10 @@ def page_achievements():
                 key, info = achievements_list[i]
                 is_unlocked = unlocked.get(key, {}).get('unlocked', 0)
                 
-                # 根据解锁状态设置样式
                 if is_unlocked:
-                    card_bg = "linear-gradient(145deg, #FFF9E6 0%, #FFE4B5 100%)"
-                    card_border = "2px solid #FFD700"
-                    card_shadow = "0 4px 15px rgba(255, 215, 0, 0.3)"
-                    icon_style = "font-size: 40px;"
-                    name_color = "#F0E68C"
-                    desc_color = "#F0E68C"
-                    lock_overlay = ""
+                    render_badge(info['icon'], info['name'], info['desc'], badge_colors[i])
                 else:
-                    card_bg = "linear-gradient(145deg, #F8F8F8 0%, #E8E8E8 100%)"
-                    card_border = "1.5px solid #DDD"
-                    card_shadow = "0 2px 8px rgba(0, 0, 0, 0.05)"
-                    icon_style = "font-size: 40px; filter: grayscale(100%); opacity: 0.6;"
-                    name_color = "#999"
-                    desc_color = "#999"
-                    lock_overlay = "<div style='position:absolute;top:0;left:0;right:0;bottom:0;background:rgba(255,255,255,0.8);display:flex;align-items:center;justify-content:center;'><span style='font-size:32px;'>🔒</span></div>"
-                
-                # 使用st.write确保HTML正确渲染
-                card_html = f"""
-                <div style='background:{card_bg};border:{card_border};box-shadow:{card_shadow};border-radius:8px;padding:15px;text-align:center;margin:5px;position:relative;overflow:hidden;width:100%;height:140px;display:flex;flex-direction:column;justify-content:center;'>
-                    {lock_overlay}
-                    <div style='{icon_style}margin-bottom:8px;'>{info['icon']}</div>
-                    <div style='font-weight:bold;color:{name_color};font-size:13px;margin-bottom:3px;'>{info['name']}</div>
-                    <div style='font-size:10px;color:{desc_color};line-height:1.3;'>{info['desc']}</div>
-                </div>
-                """
-                st.write(card_html, unsafe_allow_html=True)
+                    render_badge("🔒", info['name'], info['desc'], ("#F5F5F5", "#DDD"))
     
     # 第二排
     cols_row2 = st.columns(5)
@@ -359,34 +432,10 @@ def page_achievements():
                 key, info = achievements_list[idx]
                 is_unlocked = unlocked.get(key, {}).get('unlocked', 0)
                 
-                # 根据解锁状态设置样式
                 if is_unlocked:
-                    card_bg = "linear-gradient(145deg, #FFF9E6 0%, #FFE4B5 100%)"
-                    card_border = "2px solid #FFD700"
-                    card_shadow = "0 4px 15px rgba(255, 215, 0, 0.3)"
-                    icon_style = "font-size: 40px;"
-                    name_color = "#F0E68C"
-                    desc_color = "#F0E68C"
-                    lock_overlay = ""
+                    render_badge(info['icon'], info['name'], info['desc'], badge_colors[idx])
                 else:
-                    card_bg = "linear-gradient(145deg, #F8F8F8 0%, #E8E8E8 100%)"
-                    card_border = "1.5px solid #DDD"
-                    card_shadow = "0 2px 8px rgba(0, 0, 0, 0.05)"
-                    icon_style = "font-size: 40px; filter: grayscale(100%); opacity: 0.6;"
-                    name_color = "#999"
-                    desc_color = "#999"
-                    lock_overlay = "<div style='position:absolute;top:0;left:0;right:0;bottom:0;background:rgba(255,255,255,0.8);display:flex;align-items:center;justify-content:center;'><span style='font-size:32px;'>🔒</span></div>"
-                
-                # 使用st.write确保HTML正确渲染
-                card_html = f"""
-                <div style='background:{card_bg};border:{card_border};box-shadow:{card_shadow};border-radius:8px;padding:15px;text-align:center;margin:5px;position:relative;overflow:hidden;width:100%;height:140px;display:flex;flex-direction:column;justify-content:center;'>
-                    {lock_overlay}
-                    <div style='{icon_style}margin-bottom:8px;'>{info['icon']}</div>
-                    <div style='font-weight:bold;color:{name_color};font-size:13px;margin-bottom:3px;'>{info['name']}</div>
-                    <div style='font-size:10px;color:{desc_color};line-height:1.3;'>{info['desc']}</div>
-                </div>
-                """
-                st.write(card_html, unsafe_allow_html=True)
+                    render_badge("🔒", info['name'], info['desc'], ("#F5F5F5", "#DDD"))
 
 # ========== AI分析页面 ==========
 def page_ai():

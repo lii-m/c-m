@@ -161,11 +161,26 @@ def check_category_master():
     return len(categories) >= 10
 
 
+def parse_datetime(time_str):
+    """解析时间字符串，支持多种格式"""
+    formats = ['%Y-%m-%d %H:%M:%S', '%Y-%m-%dT%H:%M:%S.%f', '%Y-%m-%dT%H:%M:%S']
+    for fmt in formats:
+        try:
+            return datetime.strptime(time_str, fmt)
+        except ValueError:
+            continue
+    # 如果都不行，尝试使用 fromisoformat
+    try:
+        return datetime.fromisoformat(time_str)
+    except ValueError:
+        return datetime.now()
+
+
 def check_night_shopper():
     """检查深夜剁手成就"""
     expenses = get_expenses()
     night_count = sum(1 for e in expenses 
-                      if datetime.strptime(e[7], '%Y-%m-%d %H:%M:%S').hour >= 22)
+                      if parse_datetime(e[7]).hour >= 22)
     return night_count >= 3
 
 
@@ -173,7 +188,7 @@ def check_early_bird():
     """检查早起鸟成就"""
     expenses = get_expenses()
     early_count = sum(1 for e in expenses 
-                      if datetime.strptime(e[7], '%Y-%m-%d %H:%M:%S').hour < 8)
+                      if parse_datetime(e[7]).hour < 8)
     return early_count >= 3
 
 
