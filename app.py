@@ -11,14 +11,87 @@ from datetime import datetime, timedelta
 
 from db_helper import (
     add_expense, get_expenses, get_expenses_by_date_range,
-    get_monthly_expenses, get_total_monthly_expense,
-    get_most_expensive, get_daily_expense, get_setting, set_setting
+    get_monthly_expenses, get_total_monthly_expense, get_total_monthly_income,
+    get_most_expensive, get_daily_expense, get_setting, set_setting,
+    create_user, login_user, get_username, update_expense, delete_expense
 )
 from game_logic import (
     calculate_budget_progress, get_pet_mood,
     check_all_achievements, ACHIEVEMENTS, get_monthly_summary
 )
 from ai_advisor import analyze_spending
+
+# ========== 登录/注册逻辑 ==========
+def init_auth_state():
+    """初始化登录状态"""
+    if "user_id" not in st.session_state:
+        st.session_state["user_id"] = None
+    if "username" not in st.session_state:
+        st.session_state["username"] = None
+    if "logged_in" not in st.session_state:
+        st.session_state["logged_in"] = False
+
+
+def render_login_register():
+    """渲染登录/注册界面"""
+    st.markdown("<h1 style='text-align:center;margin-top:50px;'>🐱 元气记账本</h1>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align:center;color:#888;'>登录后即可开始记账</p>", unsafe_allow_html=True)
+    
+    tab_login, tab_register = st.tabs(["🔐 登录", "📝 注册"])
+    
+    with tab_login:
+        with st.form("login_form"):
+            username = st.text_input("用户名", placeholder="请输入用户名")
+            password = st.text_input("密码", type="password", placeholder="请输入密码")
+            submitted = st.form_submit_button("登录", use_container_width=True)
+            
+            if submitted:
+                if username and password:
+                    user_id = login_user(username, password)
+                    if user_id:
+                        st.session_state["user_id"] = user_id
+                        st.session_state["username"] = username
+                        st.session_state["logged_in"] = True
+                        st.success("登录成功！")
+                        st.rerun()
+                    else:
+                        st.error("用户名或密码错误")
+                else:
+                    st.warning("请填写完整信息")
+    
+    with tab_register:
+        with st.form("register_form"):
+            new_username = st.text_input("用户名", placeholder="请输入用户名", key="reg_username")
+            new_password = st.text_input("密码", type="password", placeholder="请输入密码", key="reg_password")
+            confirm_password = st.text_input("确认密码", type="password", placeholder="请再次输入密码", key="reg_confirm")
+            submitted = st.form_submit_button("注册", use_container_width=True)
+            
+            if submitted:
+                if new_username and new_password and confirm_password:
+                    if new_password != confirm_password:
+                        st.error("两次密码不一致")
+                    elif len(new_username) < 3:
+                        st.error("用户名至少3个字符")
+                    elif len(new_password) < 6:
+                        st.error("密码至少6个字符")
+                    else:
+                        user_id = create_user(new_username, new_password)
+                        if user_id:
+                            st.success("注册成功！请登录")
+                            st.info("请使用新账号登录")
+                        else:
+                            st.error("用户名已存在")
+                else:
+                    st.warning("请填写完整信息")
+
+
+def logout():
+    """退出登录"""
+    st.session_state["user_id"] = None
+    st.session_state["username"] = None
+    st.session_state["logged_in"] = False
+    st.rerun()
+
 
 # ========== 页面配置 ==========
 st.set_page_config(
@@ -47,7 +120,10 @@ EMOTIONS = {
     "🥰幸福": 4,
     "😐平静": 3,
     "😡暴躁": 2,
-    "😔后悔": 1
+    "😔后悔": 1,
+    "😢悲伤": 0,
+    "😠愤怒": -1,
+    "😞失望": -2
 }
 
 # ========== 主题配置 ==========
@@ -175,7 +251,17 @@ def render_css():
 
 # ========== 侧边栏 ==========
 def sidebar():
+    user_id = st.session_state.get("user_id", 1)
+    username = st.session_state.get("username", "用户")
+    
     with st.sidebar:
+        # 用户信息 & 登出按钮
+        col1, col2 = st.columns([3, 1])
+        with col1:
+            st.markdown(f"👤 **{username}**")
+        with col2:
+            st.button("登出", on_click=logout, key="logout_btn")
+        
         # 主题切换
         theme_key = st.selectbox(
             "选择主题",
@@ -188,17 +274,21 @@ def sidebar():
         st.markdown(f"<h2 style='text-align:center;color:{theme['primary']}'>🐱 元气记账本</h2>", unsafe_allow_html=True)
         
         # 宠物小猫
-        mood, emoji = get_pet_mood()
+        mood, emoji = get_pet_mood(user_id)
         st.markdown(f"<div style='text-align:center;font-size:60px'>{emoji}</div>", unsafe_allow_html=True)
         st.markdown(f"<p style='text-align:center;color:{theme['primary']}'>小猫心情：{mood}</p>", unsafe_allow_html=True)
         
         # 本月总花费
         now = datetime.now()
-        total = get_total_monthly_expense(now.year, now.month)
+        total = get_total_monthly_expense(user_id, now.year, now.month)
+        total_income = get_total_monthly_income(user_id, now.year, now.month)
+        net = total_income - total
         st.markdown(f"<p style='color:#888;font-size:14px'>本月总花费</p><p style='font-size:28px;font-weight:bold;color:{theme['primary']}'>¥{total:.2f}</p>", unsafe_allow_html=True)
+        st.markdown(f"<p style='color:#888;font-size:14px'>本月收入</p><p style='font-size:20px;font-weight:bold;color:#4CAF50'>¥{total_income:.2f}</p>", unsafe_allow_html=True)
+        st.markdown(f"<p style='color:#888;font-size:14px'>净收支</p><p style='font-size:20px;font-weight:bold;color:{'#4CAF50' if net >= 0 else '#FF4444'}'>{'+' if net >= 0 else ''}¥{net:.2f}</p>", unsafe_allow_html=True)
         
         # 预算进度
-        bp = calculate_budget_progress()
+        bp = calculate_budget_progress(user_id)
         st.markdown("<p style='color:#888;font-size:14px'>预算进度</p>", unsafe_allow_html=True)
         if bp['over_budget']:
             st.markdown("<p style='color:#FF4444;font-size:12px'>⚠️ 超预算啦！</p>", unsafe_allow_html=True)
@@ -207,16 +297,17 @@ def sidebar():
         
         # 今日花费
         today = now.strftime('%Y-%m-%d')
-        today_expense = get_daily_expense(today)
+        today_expense = get_daily_expense(user_id, today)
         st.markdown(f"<p style='color:#888;font-size:14px'>今日花费</p><p style='font-size:20px;font-weight:bold;color:{theme['primary']}'>¥{today_expense:.2f}</p>", unsafe_allow_html=True)
         
         # 最贵一笔
-        most = get_most_expensive(now.year, now.month)
+        most = get_most_expensive(user_id, now.year, now.month)
         if most:
-            st.markdown(f"<p style='color:#888;font-size:14px'>本月最贵</p><p style='font-size:16px;color:#FF69B4'>¥{most[2]:.2f} - {most[3]}</p>", unsafe_allow_html=True)
+            st.markdown(f"<p style='color:#888;font-size:14px'>本月最贵</p><p style='font-size:16px;color:#FF69B4'>¥{most[3]:.2f} - {most[4]}</p>", unsafe_allow_html=True)
 
 # ========== 记账页面 ==========
 def page_expense():
+    user_id = st.session_state.get("user_id", 1)
     st.markdown("<h2>📝 记一笔</h2>", unsafe_allow_html=True)
     
     col1, col2 = st.columns([1, 1])
@@ -238,12 +329,13 @@ def page_expense():
                 st.toast("金额必须大于0！", icon="⚠️")
             else:
                 add_expense(
+                    user_id,
                     date.strftime('%Y-%m-%d'),
                     amount, category,
                     subcategory if subcategory else None,
                     emotion, note if note else None
                 )
-                unlocked = check_all_achievements()
+                unlocked = check_all_achievements(user_id)
                 for a in unlocked:
                     st.toast(f"🎉 解锁成就：{a}！", icon="🏆")
                 st.toast("✅ 记账成功！", icon="💰")
@@ -268,18 +360,18 @@ def page_expense():
         
         # 筛选记录
         if show_all:
-            filtered = get_monthly_expenses(sel_year, sel_month)
+            filtered = get_monthly_expenses(user_id, sel_year, sel_month)
         else:
-            expenses = get_monthly_expenses(sel_year, sel_month)
+            expenses = get_monthly_expenses(user_id, sel_year, sel_month)
             target = f"{sel_year}-{sel_month:02d}-{sel_day:02d}"
-            filtered = [e for e in expenses if e[1] == target]
+            filtered = [e for e in expenses if e[2] == target]
         
         # 折叠展示
         show_all_rec = st.session_state.get('show_all_records', False)
         limit = len(filtered) if show_all_rec else 5
         
         if filtered:
-            df = pd.DataFrame(filtered, columns=['ID', '日期', '金额', '分类', '子分类', '情绪', '备注', '类型', '创建时间'])
+            df = pd.DataFrame(filtered, columns=['ID', 'user_id', '日期', '金额', '分类', '子分类', '情绪', '备注', '类型', '创建时间'])
             df.insert(0, '序号', range(1, len(df) + 1))
             df['类型'] = df['类型'].apply(lambda x: '收入' if x == 1 else '支出')
             df = df[['序号', '日期', '类型', '金额', '分类', '子分类', '情绪', '备注']]
@@ -301,21 +393,28 @@ def page_expense():
 
 # ========== 情绪账本页面 ==========
 def page_emotion():
+    user_id = st.session_state.get("user_id", 1)
     st.markdown("<h2>📊 情绪账本</h2>", unsafe_allow_html=True)
     
-    expenses = get_expenses()
+    expenses = get_expenses(user_id)
     if not expenses:
         st.info("还没有消费记录，快去记一笔吧！")
         return
     
-    df = pd.DataFrame(expenses, columns=['ID', '日期', '金额', '分类', '子分类', '情绪', '备注', '类型', '创建时间'])
+    # 过滤只显示支出记录（is_income=0）
+    expenses = [e for e in expenses if len(e) > 8 and e[8] == 0]
+    
+    df = pd.DataFrame(expenses, columns=['ID', 'user_id', '日期', '金额', '分类', '子分类', '情绪', '备注', '类型', '创建时间'])
     df['情绪分值'] = df['情绪'].map(EMOTIONS)
     df['情绪颜色'] = df['情绪'].map({
         "😊开心": "#FFF5E6",
         "🥰幸福": "#FFE4EC",
         "😐平静": "#E6F7FF",
         "😡暴躁": "#FFE4E1",
-        "😔后悔": "#F5E6FF"
+        "😔后悔": "#F5E6FF",
+        "😢悲伤": "#E6E6FF",
+        "😠愤怒": "#FFD4D4",
+        "😞失望": "#E6E6E6"
     })
     
     # 情绪消费散点图
@@ -327,7 +426,10 @@ def page_emotion():
                              "🥰幸福": "#FFB8D0",
                              "😐平静": "#B8E6FF",
                              "😡暴躁": "#FFB3AD",
-                             "😔后悔": "#E8C8FF"
+                             "😔后悔": "#E8C8FF",
+                             "😢悲伤": "#D8D8FF",
+                             "😠愤怒": "#FFB0B0",
+                             "😞失望": "#C8C8C8"
                          },
                          title="消费金额 vs 情绪分值")
         st.plotly_chart(fig1, use_container_width=True)
@@ -358,19 +460,20 @@ def page_emotion():
 
 # ========== 成就页面 ==========
 def page_achievements():
+    user_id = st.session_state.get("user_id", 1)
     st.markdown("<h2>🎮 我的成就</h2>", unsafe_allow_html=True)
     
     # 预算设置
     st.markdown("<h3>💰 月度预算</h3>", unsafe_allow_html=True)
-    current_budget = float(get_setting('monthly_budget') or 2000)
+    current_budget = float(get_setting(user_id, 'monthly_budget') or 2000)
     new_budget = st.number_input("设置月预算", min_value=100, value=int(current_budget), step=100)
     if new_budget != current_budget:
-        set_setting('monthly_budget', new_budget)
+        set_setting(user_id, 'monthly_budget', new_budget)
         st.toast("预算已更新！", icon="✅")
         st.rerun()
     
     # 预算进度
-    bp = calculate_budget_progress()
+    bp = calculate_budget_progress(user_id)
     st.progress(bp['progress'])
     st.markdown(f"**已用：** ¥{bp['total']:.2f} / **预算：** ¥{bp['budget']:.2f}")
     if bp['over_budget']:
@@ -379,7 +482,7 @@ def page_achievements():
     # 成就展示
     st.markdown("## 成就徽章")
     from game_logic import get_all_achievements
-    unlocked = get_all_achievements()
+    unlocked = get_all_achievements(user_id)
     
     # HTML模板 - 使用更稳定的渲染方式
     def render_badge(icon, name, desc, colors):
@@ -440,10 +543,11 @@ def page_achievements():
 
 # ========== AI分析页面 ==========
 def page_ai():
+    user_id = st.session_state.get("user_id", 1)
     st.markdown("<h2>🤖 AI财务分析</h2>", unsafe_allow_html=True)
     
     # 消费概览
-    summary = get_monthly_summary()
+    summary = get_monthly_summary(user_id)
     c1, c2, c3 = st.columns(3)
     with c1:
         st.markdown(f"<div style='background:linear-gradient(135deg,#FFE4E1 0%,#FFB6C1 100%);border-radius:12px;padding:20px;text-align:center'><p style='color:#888;font-size:14px'>本月总消费</p><p style='font-size:28px;font-weight:bold;color:#FF69B4'>¥{summary['total']:.2f}</p></div>", unsafe_allow_html=True)
@@ -456,7 +560,7 @@ def page_ai():
     # AI分析按钮
     if st.button("🔮 召唤元宝分析", use_container_width=True):
         with st.spinner("元宝正在分析你的消费记录..."):
-            result = analyze_spending()
+            result = analyze_spending(user_id)
         
         st.markdown("<div style='background:linear-gradient(135deg,#FFF8F0 0%,#FFE4E1 100%);border-radius:20px;padding:25px;margin-top:20px'>", unsafe_allow_html=True)
         st.markdown(f"<h3 style='color:#FF69B4'>💢 元宝吐槽</h3><p style='font-size:18px'>{result['tucao']}</p>", unsafe_allow_html=True)
@@ -470,6 +574,15 @@ def page_ai():
 
 # ========== 主程序入口 ==========
 def main():
+    # 初始化登录状态
+    init_auth_state()
+    
+    # 检查是否已登录
+    if not st.session_state.get("logged_in", False):
+        render_login_register()
+        return
+    
+    # 已登录，显示主界面
     render_css()
     sidebar()
     

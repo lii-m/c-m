@@ -15,7 +15,7 @@ load_dotenv()
 API_KEY = os.getenv('DEEPSEEK_API_KEY')
 
 
-def analyze_spending():
+def analyze_spending(user_id=None):
     """
     分析最近7天的消费记录，调用DeepSeek API生成吐槽和建议
     返回：{ 'tucao': str, 'suggestions': [str, str, str], 'insight': str }
@@ -31,9 +31,11 @@ def analyze_spending():
     end_date = datetime.now()
     start_date = end_date - timedelta(days=7)
     
-    all_expenses = get_expenses()
+    all_expenses = get_expenses(user_id)
+    # 过滤只显示支出
+    all_expenses = [e for e in all_expenses if len(e) > 8 and e[8] == 0]
     recent = [e for e in all_expenses 
-              if start_date <= datetime.strptime(e[1], '%Y-%m-%d') <= end_date]
+              if start_date <= datetime.strptime(e[2], '%Y-%m-%d') <= end_date]
     
     if not recent:
         return {
@@ -46,8 +48,8 @@ def analyze_spending():
     lines = []
     total = 0
     for e in recent:
-        lines.append(f"{e[1]} 花了{e[2]}元买{e[3]}（{e[4] or '无子分类'}），感觉{e[5]}")
-        total += e[2]
+        lines.append(f"{e[2]} 花了{e[3]}元买{e[4]}（{e[5] or '无子分类'}），感觉{e[6]}")
+        total += e[3]
     
     expense_text = "\n".join(lines)
     
