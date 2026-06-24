@@ -1,7 +1,7 @@
 .venv
 .env
 *.pyc
-_pycache_/
+__pycache__/
 &.pyo
 *.pyd
 提示词.txt

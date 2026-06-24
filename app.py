@@ -279,9 +279,10 @@ def page_expense():
         limit = len(filtered) if show_all_rec else 5
         
         if filtered:
-            df = pd.DataFrame(filtered, columns=['ID', '日期', '金额', '分类', '子分类', '情绪', '备注', '创建时间'])
+            df = pd.DataFrame(filtered, columns=['ID', '日期', '金额', '分类', '子分类', '情绪', '备注', '类型', '创建时间'])
             df.insert(0, '序号', range(1, len(df) + 1))
-            df = df[['序号', '日期', '金额', '分类', '子分类', '情绪', '备注']]
+            df['类型'] = df['类型'].apply(lambda x: '收入' if x == 1 else '支出')
+            df = df[['序号', '日期', '类型', '金额', '分类', '子分类', '情绪', '备注']]
             df['金额'] = df['金额'].apply(lambda x: f"¥{x:.2f}")
             
             st.dataframe(df.head(limit), use_container_width=True)
@@ -307,7 +308,7 @@ def page_emotion():
         st.info("还没有消费记录，快去记一笔吧！")
         return
     
-    df = pd.DataFrame(expenses, columns=['ID', '日期', '金额', '分类', '子分类', '情绪', '备注', '创建时间'])
+    df = pd.DataFrame(expenses, columns=['ID', '日期', '金额', '分类', '子分类', '情绪', '备注', '类型', '创建时间'])
     df['情绪分值'] = df['情绪'].map(EMOTIONS)
     df['情绪颜色'] = df['情绪'].map({
         "😊开心": "#FFF5E6",
