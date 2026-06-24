@@ -9,10 +9,15 @@ from openai import OpenAI
 from datetime import datetime, timedelta
 from db_helper import get_expenses
 
-# 加载环境变量
+# 加载环境变量（本地开发）
 load_dotenv()
 
-API_KEY = os.getenv('DEEPSEEK_API_KEY')
+# 优先从 Streamlit Secrets 获取，其次从环境变量获取
+try:
+    import streamlit as st
+    API_KEY = st.secrets.get('DEEPSEEK_API_KEY', os.getenv('DEEPSEEK_API_KEY'))
+except:
+    API_KEY = os.getenv('DEEPSEEK_API_KEY')
 
 
 def analyze_spending(user_id=None):
